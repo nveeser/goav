@@ -65,9 +65,9 @@ func main() {
 	}
 
 	// Open video file
-	pFormatContext := avformat.AvformatAllocContext()
-	if avformat.AvformatOpenInput(&pFormatContext, os.Args[1], nil, nil) != 0 {
-		fmt.Printf("Unable to open file %s\n", os.Args[1])
+	pFormatContext := avformat.NewContext()
+	if err := pFormatContext.OpenInput(os.Args[1], nil, nil); err != nil {
+		fmt.Printf("Unable to open file %s: %s\n", os.Args[1], err)
 		os.Exit(1)
 	}
 
@@ -81,8 +81,8 @@ func main() {
 	pFormatContext.AvDumpFormat(0, os.Args[1], 0)
 
 	// Find the first video stream
-	for i := 0; i < int(pFormatContext.NbStreams()); i++ {
-		switch pFormatContext.Streams()[i].CodecParameters().AvCodecGetType() {
+	for _, stream := range pFormatContext.Streams() {
+		switch stream.CodecParameters().AvCodecGetType() {
 		case avformat.AVMEDIA_TYPE_VIDEO:
 
 			// Get a pointer to the codec context for the video stream

@@ -1,27 +1,26 @@
 package avformat
 
 import (
-	"syscall"
+	"runtime"
 	"testing"
 )
 
-func TestFinalizer(t*testing.T) {
-	for sample := 1; sample <= sampleSize; sample++ {
-		for i := 0; i < loopSize; i++ {
-			a := NewAllocator(10 * 1024)
-			_ = a
-		}
+func TestFinalizer(t *testing.T) {
+	for i := 0; i <= 1000; i++ {
+		ctx := NewContext()
+		_ = ctx
+	}
+	runtime.GC()
 
-		err := syscall.Getrusage(syscall.RUSAGE_SELF, &rUsage)
-		if err != nil {
-			panic(err)
-		}
+	got := allocatedContextCount()
+	if got == 1000 {
+		t.Errorf("allocatedContextCount got %d == 1000 wanted < 1000 ", got)
 	}
 }
 
 func TestContextStruct(t *testing.T) {
 	ctx := NewContext()
-	if err := ctx.OpenInput("small.mp4", nil, nil); err != nil{
+	if err := ctx.OpenInput("small.mp4", nil, nil); err != nil {
 		t.Errorf("OpenInput got %q wanted nil", err)
 	}
 	ctx.Filename()

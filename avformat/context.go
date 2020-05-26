@@ -8,6 +8,7 @@ package avformat
 import "C"
 import (
 	"runtime"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -22,14 +23,25 @@ const (
 	AvseekFlagFrame    = 8 ///< seeking based on frame number
 )
 
+var contextsAllocated uint64
+
 type Context struct {
 	ptr *C.struct_AVFormatContext
 }
 
 func NewContext() *Context {
+	atomic.AddUint64(&contextsAllocated, 1)
 	c := &Context{ptr: C.avformat_alloc_context()}
-	runtime.SetFinalizer(c, func(c *Context) { C.avformat_free_context(c.ptr) })
+	runtime.SetFinalizer(c, freeContext)
 	return c
+}
+func allocatedContextCount() uint64 {
+	return atomic.LoadUint64(&contextsAllocated)
+}
+
+func freeContext(c *Context) {
+	C.avformat_free_context(c.ptr)
+	atomic.AddUint64(&contextsAllocated, ^uint64(0))
 }
 
 //Allocate an Context for an output format.
@@ -109,7 +121,7 @@ func (c *Context) AvFmtCtxGetDurationEstimationMethod() AvDurationEstimationMeth
 func (c *Context) AvformatNewStream(codec *AvCodec) *Stream {
 	return &Stream{
 		context: c,
-		ptr: C.avformat_new_stream((*C.struct_AVFormatContext)(c.ptr), (*C.struct_AVCodec)(codec)),
+		ptr:     C.avformat_new_stream((*C.struct_AVFormatContext)(c.ptr), (*C.struct_AVCodec)(codec)),
 	}
 }
 
@@ -253,7 +265,7 @@ func (c *Context) AvformatNewStream2(codec *AvCodec) *Stream {
 
 	return &Stream{
 		context: c,
-		ptr: stream,
+		ptr:     stream,
 	}
 }
 
