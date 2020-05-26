@@ -26,14 +26,13 @@ import (
 )
 
 type (
-	AvProbeData                C.struct_AVProbeData
-	InputFormat                C.struct_AVInputFormat
-	OutputFormat               C.struct_AVOutputFormat
-	Context                    C.struct_AVFormatContext
-	Frame                      C.struct_AVFrame
-	CodecContext               C.struct_AVCodecContext
-	AvIndexEntry               C.struct_AVIndexEntry
-	Stream                     C.struct_AVStream
+	AvProbeData  C.struct_AVProbeData
+	InputFormat  C.struct_AVInputFormat
+	OutputFormat C.struct_AVOutputFormat
+	Frame        C.struct_AVFrame
+	CodecContext C.struct_AVCodecContext
+	AvIndexEntry C.struct_AVIndexEntry
+	//Stream                     C.struct_AVStream
 	AvProgram                  C.struct_AVProgram
 	AvChapter                  C.struct_AVChapter
 	AvPacketList               C.struct_AVPacketList
@@ -118,30 +117,9 @@ func AvformatNetworkDeinit() int {
 	return int(C.avformat_network_deinit())
 }
 
-//Allocate an Context.
-func AvformatAllocContext() *Context {
-	return (*Context)(C.avformat_alloc_context())
-}
-
 //Get the Class for Context.
 func AvformatGetClass() *Class {
 	return (*Class)(C.avformat_get_class())
-}
-
-//Get side information from stream.
-func (s *Stream) AvStreamGetSideData(t AvPacketSideDataType, z int) *uint8 {
-	return (*uint8)(C.av_stream_get_side_data((*C.struct_AVStream)(s), (C.enum_AVPacketSideDataType)(t), (*C.int)(unsafe.Pointer(&z))))
-}
-
-//Allocate an Context for an output format.
-func AvformatAllocOutputContext2(ctx **Context, o *OutputFormat, fo, fi string) int {
-	Cformat_name := C.CString(fo)
-	defer C.free(unsafe.Pointer(Cformat_name))
-
-	Cfilename := C.CString(fi)
-	defer C.free(unsafe.Pointer(Cfilename))
-
-	return int(C.avformat_alloc_output_context2((**C.struct_AVFormatContext)(unsafe.Pointer(ctx)), (*C.struct_AVOutputFormat)(o), Cformat_name, Cfilename))
 }
 
 //Find InputFormat based on the short name of the input format.
@@ -181,14 +159,6 @@ func AvProbeInputBuffer(pb *AvIOContext, f **InputFormat, fi string, l int, o, m
 	defer C.free(unsafe.Pointer(Curl))
 
 	return int(C.av_probe_input_buffer((*C.struct_AVIOContext)(pb), (**C.struct_AVInputFormat)(unsafe.Pointer(f)), Curl, unsafe.Pointer(&l), C.uint(o), C.uint(m)))
-}
-
-//Open an input stream and read the header.
-func AvformatOpenInput(ps **Context, fi string, fmt *InputFormat, d **avutil.Dictionary) int {
-	Cfi := C.CString(fi)
-	defer C.free(unsafe.Pointer(Cfi))
-
-	return int(C.avformat_open_input((**C.struct_AVFormatContext)(unsafe.Pointer(ps)), Cfi, (*C.struct_AVInputFormat)(fmt), (**C.struct_AVDictionary)(unsafe.Pointer(d))))
 }
 
 //Return the output format in the list of registered output formats which best matches the provided parameters, or return NULL if there is no match.
@@ -231,12 +201,12 @@ func AvHexDumpLog(a, l int, b *uint8, s int) {
 
 //Send a nice dump of a packet to the specified file stream.
 func AvPktDump2(f *File, pkt *avcodec.Packet, dp int, st *Stream) {
-	C.av_pkt_dump2((*C.FILE)(f), toCPacket(pkt), C.int(dp), (*C.struct_AVStream)(st))
+	C.av_pkt_dump2((*C.FILE)(f), toCPacket(pkt), C.int(dp), (*C.struct_AVStream)(st.ptr))
 }
 
 //Send a nice dump of a packet to the log.
 func AvPktDumpLog2(a int, l int, pkt *avcodec.Packet, dp int, st *Stream) {
-	C.av_pkt_dump_log2(unsafe.Pointer(&a), C.int(l), toCPacket(pkt), C.int(dp), (*C.struct_AVStream)(st))
+	C.av_pkt_dump_log2(unsafe.Pointer(&a), C.int(l), toCPacket(pkt), C.int(dp), (*C.struct_AVStream)(st.ptr))
 }
 
 //enum CodecId av_codec_get_id (const struct AvCodecTag *const *tags, unsigned int tag)
@@ -257,12 +227,12 @@ func AvCodecGetTag2(t **AvCodecTag, id CodecId, tag *uint) int {
 
 //Get the index for a specific timestamp.
 func AvIndexSearchTimestamp(st *Stream, t int64, f int) int {
-	return int(C.av_index_search_timestamp((*C.struct_AVStream)(st), C.int64_t(t), C.int(f)))
+	return int(C.av_index_search_timestamp((*C.struct_AVStream)(st.ptr), C.int64_t(t), C.int(f)))
 }
 
 //Add an index entry into a sorted list.
 func AvAddIndexEntry(st *Stream, pos, t, int64, s, d, f int) int {
-	return int(C.av_add_index_entry((*C.struct_AVStream)(st), C.int64_t(pos), C.int64_t(t), C.int(s), C.int(d), C.int(f)))
+	return int(C.av_add_index_entry((*C.struct_AVStream)(st.ptr), C.int64_t(pos), C.int64_t(t), C.int(s), C.int(d), C.int(f)))
 }
 
 //Split a URL string into components.

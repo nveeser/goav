@@ -1,92 +1,46 @@
 package main
 
-// tutorial01.c
-// Code based on a tutorial at http://dranger.com/ffmpeg/tutorial01.html
-
-// A small sample program that shows how to use libavformat and libavcodec to
-// read video from a file.
-//
-// Use
-//
-// gcc -o tutorial01 tutorial01.c -lavformat -lavcodec -lswscale -lz
-//
-// to build (assuming libavformat and libavcodec are correctly installed
-// your system).
-//
-// Run using
-//
-// tutorial01 myvideofile.mpg
-//
-// to write the first five frames from "myvideofile.mpg" to disk in PPM
-// format.
 import (
 	"fmt"
+	"github.com/nveeser/goav/swscale"
 	"log"
 	"os"
 	"unsafe"
 
-	"github.com/nveeser/goav/swscale"
-	"github.com/nveeser/goav/avcodec"
 	"github.com/nveeser/goav/avformat"
+	"github.com/nveeser/goav/avcodec"
 	"github.com/nveeser/goav/avutil"
 )
 
-// SaveFrame writes a single frame to disk as a PPM file
-func SaveFrame(frame *avutil.Frame, width, height, frameNumber int) {
-	// Open file
-	fileName := fmt.Sprintf("frame%d.ppm", frameNumber)
-	file, err := os.Create(fileName)
-	if err != nil {
-		log.Println("Error Reading")
-	}
-	defer file.Close()
-
-	// Write header
-	header := fmt.Sprintf("P6\n%d %d\n255\n", width, height)
-	file.Write([]byte(header))
-
-	// Write pixel data
-	for y := 0; y < height; y++ {
-		data0 := avutil.Data(frame)[0]
-		buf := make([]byte, width*3)
-		startPos := uintptr(unsafe.Pointer(data0)) + uintptr(y)*uintptr(avutil.Linesize(frame)[0])
-		for i := 0; i < width*3; i++ {
-			element := *(*uint8)(unsafe.Pointer(startPos + uintptr(i)))
-			buf[i] = element
-		}
-		file.Write(buf)
-	}
-}
-
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Please provide a movie file")
-		os.Exit(1)
-	}
 
-	// Open video file
-	pFormatContext := avformat.AvformatAllocContext()
-	if avformat.AvformatOpenInput(&pFormatContext, os.Args[1], nil, nil) != 0 {
-		fmt.Printf("Unable to open file %s\n", os.Args[1])
+	filename := "/home/nicholas/demo.mp4"
+
+	// Register all formats and codecs
+	avformat.AvRegisterAll()
+
+	avCtx := avformat.NewContext()
+	if err := avCtx.OpenInput(filename, nil, nil) ; err != nil {
+		log.Printf("Error: Couldn't open file: %s", err)
 		os.Exit(1)
 	}
 
 	// Retrieve stream information
-	if pFormatContext.AvformatFindStreamInfo(nil) < 0 {
-		fmt.Println("Couldn't find stream information")
+	if avCtx.AvformatFindStreamInfo(nil) < 0 {
+		log.Println("Error: Couldn't find stream information.")
 		os.Exit(1)
 	}
 
 	// Dump information about file onto standard error
-	pFormatContext.AvDumpFormat(0, os.Args[1], 0)
+	avCtx.AvDumpFormat(0, filename, 0)
 
 	// Find the first video stream
-	for i := 0; i < int(pFormatContext.NbStreams()); i++ {
-		switch pFormatContext.Streams()[i].CodecParameters().AvCodecGetType() {
+	for i := 0; i < int(avCtx.NbStreams()); i++ {
+		switch avCtx.Streams()[i].CodecParameters().AvCodecGetType() {
 		case avformat.AVMEDIA_TYPE_VIDEO:
 
 			// Get a pointer to the codec context for the video stream
-			pCodecCtxOrig := pFormatContext.Streams()[i].Codec()
+			pCodecCtxOrig := avCtx.Streams()[i].Codec()
 			// Find the decoder for the video stream
 			pCodec := avcodec.AvcodecFindDecoder(avcodec.CodecId(pCodecCtxOrig.GetCodecId()))
 			if pCodec == nil {
@@ -144,7 +98,7 @@ func main() {
 			// Read frames and save first five frames to disk
 			frameNumber := 1
 			packet := avcodec.AvPacketAlloc()
-			for pFormatContext.AvReadFrame(packet) >= 0 {
+			for avCtx.AvReadFrame(packet) >= 0 {
 				// Is this a packet from the video stream?
 				if packet.StreamIndex() == i {
 					// Decode video frame
@@ -169,7 +123,7 @@ func main() {
 
 							// Save the frame to disk
 							fmt.Printf("Writing frame %d\n", frameNumber)
-							SaveFrame(pFrameRGB, pCodecCtx.Width(), pCodecCtx.Height(), frameNumber)
+							//SaveFrame(pFrameRGB, pCodecCtx.Width(), pCodecCtx.Height(), frameNumber)
 						} else {
 							return
 						}
@@ -193,7 +147,7 @@ func main() {
 			(*avcodec.Context)(unsafe.Pointer(pCodecCtxOrig)).AvcodecClose()
 
 			// Close the video file
-			pFormatContext.AvformatCloseInput()
+			avCtx.AvformatCloseInput()
 
 			// Stop after saving frames of first video straem
 			break
@@ -203,4 +157,5 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
 }

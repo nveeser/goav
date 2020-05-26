@@ -8,11 +8,22 @@ package avformat
 import "C"
 import (
 	"github.com/nveeser/goav/avcodec"
+	"unsafe"
 )
+
+type Stream struct {
+	context *Context
+	ptr     *C.struct_AVStream
+}
+
+//Get side information from stream.
+func (s *Stream) AvStreamGetSideData(t AvPacketSideDataType, z int) *uint8 {
+	return (*uint8)(C.av_stream_get_side_data((*C.struct_AVStream)(s.ptr), (C.enum_AVPacketSideDataType)(t), (*C.int)(unsafe.Pointer(&z))))
+}
 
 //Rational av_stream_get_r_frame_rate (const Stream *s)
 func (s *Stream) AvStreamGetRFrameRate() avcodec.Rational {
-	return newRational(C.av_stream_get_r_frame_rate((*C.struct_AVStream)(s)))
+	return newRational(C.av_stream_get_r_frame_rate((*C.struct_AVStream)(s.ptr)))
 }
 
 //void av_stream_set_r_frame_rate (Stream *s, Rational r)
@@ -21,13 +32,12 @@ func (s *Stream) AvStreamSetRFrameRate(r avcodec.Rational) {
 		num: C.int(r.Num()),
 		den: C.int(r.Den()),
 	}
-
-	C.av_stream_set_r_frame_rate((*C.struct_AVStream)(s), rat)
+	C.av_stream_set_r_frame_rate((*C.struct_AVStream)(s.ptr), rat)
 }
 
 //struct CodecParserContext * av_stream_get_parser (const Stream *s)
 func (s *Stream) AvStreamGetParser() *CodecParserContext {
-	return (*CodecParserContext)(C.av_stream_get_parser((*C.struct_AVStream)(s)))
+	return (*CodecParserContext)(C.av_stream_get_parser((*C.struct_AVStream)(s.ptr)))
 }
 
 // //char * av_stream_get_recommended_encoder_configuration (const Stream *s)
@@ -43,5 +53,5 @@ func (s *Stream) AvStreamGetParser() *CodecParserContext {
 //int64_t av_stream_get_end_pts (const Stream *st)
 //Returns the pts of the last muxed packet + its duration.
 func (s *Stream) AvStreamGetEndPts() int64 {
-	return int64(C.av_stream_get_end_pts((*C.struct_AVStream)(s)))
+	return int64(C.av_stream_get_end_pts((*C.struct_AVStream)(s.ptr)))
 }
